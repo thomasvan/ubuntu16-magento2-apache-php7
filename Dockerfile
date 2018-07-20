@@ -20,7 +20,7 @@ RUN apt-get -y upgrade
 
 # Basic Requirements
 RUN apt-get -y install python-setuptools curl git nano sudo unzip openssh-server openssl shellinabox
-RUN apt-get -y install mysql-server apache2 libapache2-mod-fastcgi php7.1-fpm
+RUN apt-get -y install mysql-server apache2 php7.1-fpm libapache2-mod-fastcgi
 
 # Magento Requirements
 
@@ -28,13 +28,21 @@ RUN apt-get -y install php7.1-xml php7.1-mcrypt php7.1-mbstring php7.1-bcmath ph
 # mysql config
 RUN sed -i -e"s/^bind-address\s*=\s*127.0.0.1/explicit_defaults_for_timestamp = true\nbind-address = 0.0.0.0/" /etc/mysql/mysql.conf.d/mysqld.cnf
 
-# nginx config
-RUN sed -i -e"s/user\s*www-data;/user magento www-data;/" /etc/nginx/nginx.conf
-RUN sed -i -e"s/keepalive_timeout\s*65/keepalive_timeout 2/" /etc/nginx/nginx.conf
-RUN sed -i -e"s/keepalive_timeout 2/keepalive_timeout 2;\n\tclient_max_body_size 100m/" /etc/nginx/nginx.conf
-RUN echo "daemon off;" >> /etc/nginx/nginx.conf
+# apache config
+COPY serve-web-dir.conf /tmp/
+RUN cat /tmp/serve-web-dir.conf >> /etc/apache2/conf-available/serve-cgi-bin.conf && rm -f /tmp/serve-web-dir.conf
+
+RUN a2enmod actions fastcgi alias && \
+    a2enmod rewrite expires headers
+RUN echo "ServerName localhost" | sudo tee /etc/apache2/conf-available/fqdn.conf && \
+    a2enconf fqdn && \
+    a2enmod ssl && \
+    a2ensite default-ssl
+RUN sed -i -e "s/#\s*Include\s*conf-available\/serve-cgi-bin.conf/Include conf-available\/serve-cgi-bin.conf/g" /etc/apache2/sites-available/000-default.conf
+RUN sed -i -e "s/#\s*Include\s*conf-available\/serve-cgi-bin.conf/Include conf-available\/serve-cgi-bin.conf/g" /etc/apache2/sites-available/default-ssl.conf
 
 # php-fpm config
+RUN phpdismod opcache
 RUN sed -i -e "s/upload_max_filesize\s*=\s*2M/upload_max_filesize = 100M/g" /etc/php/7.1/fpm/php.ini
 RUN sed -i -e "s/post_max_size\s*=\s*8M/post_max_size = 100M/g" /etc/php/7.1/fpm/php.ini
 RUN sed -i -e "s/max_execution_time\s*=\s*30/max_execution_time = 3600/g" /etc/php/7.1/fpm/php.ini
@@ -52,22 +60,9 @@ RUN sed -i -e "s/;catch_workers_output\s*=\s*yes/catch_workers_output = yes/g" /
 RUN sed -i -e "s/user\s*=\s*www-data/user = magento/g" /etc/php/7.1/fpm/pool.d/www.conf
 # replace # by ; RUN find /etc/php/7.1/mods-available/tmp -name "*.ini" -exec sed -i -re 's/^(\s*)#(.*)/\1;\2/g' {} \;
 
-# nginx site conf
-ADD ./nginx-site.conf /etc/nginx/sites-available/default
-RUN mkdir /etc/nginx/magento-conf.d
-ADD ./nginx-magento.conf /etc/nginx/magento-conf.d
+# apache site conf
 
-# Generate self-signed ssl cert
-RUN mkdir /etc/nginx/ssl/
-RUN openssl req \
-    -new \
-    -newkey rsa:4096 \
-    -days 365 \
-    -nodes \
-    -x509 \
-    -subj "/C=US/ST=Denial/L=Springfield/O=Dis/CN=localhost" \
-    -keyout /etc/ssl/private/ssl-cert-snakeoil.key \
-    -out /etc/ssl/certs/ssl-cert-snakeoil.pem
+
 
 # Install composer and modman
 RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
@@ -120,7 +115,7 @@ RUN curl --location https://www.phpmyadmin.net/downloads/phpMyAdmin-latest-all-l
     && mv phpMyAdmin* /usr/share/phpmyadmin
 ADD ./config.inc.php /usr/share/phpmyadmin/config.inc.php
 RUN chown -R magento: /usr/share/phpmyadmin
-
+RUN ln -s /usr/share/phpmyadmin/ /var/www/html/phpmyadmin
 # Magento Initialization and Startup Script
 ADD ./start.sh /start.sh
 RUN chmod 755 /start.sh
