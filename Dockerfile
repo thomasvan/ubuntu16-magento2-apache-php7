@@ -30,7 +30,7 @@ RUN sed -i -e"s/^bind-address\s*=\s*127.0.0.1/explicit_defaults_for_timestamp = 
 
 # apache config
 RUN sed -i 's/<\/VirtualHost>/\t<IfModule mod_fastcgi.c>\n\t\tAddType application\/x-httpd-fastphp7.1 .php\n\t\tAction application\/x-httpd-fastphp7.1 \/php7.1-fcgi\n\t\tAlias \/php7.1-fcgi \/usr\/lib\/cgi-bin\/php7.1-fcgi\n\t\tFastCgiExternalServer \/usr\/lib\/cgi-bin\/php7.1-fcgi -socket \/run\/php\/php7.1-fpm.sock -pass-header Authorization\n\t<\/IfModule>\n<\/VirtualHost>/g' /etc/apache2/sites-available/000-default.conf
-RUN sed -i 's/<\/VirtualHost>/\t<IfModule mod_fastcgi.c>\n\t\t\tAddType application\/x-httpd-fastphp7.1 .php\n\t\t\tAction application\/x-httpd-fastphp7.1 \/php7.1-fcgi\n\t\t\tAlias \/php7.1-fcgi \/usr\/lib\/cgi-bin\/php7.1-fcgi\n\t\t<\/IfModule>\n<\/VirtualHost>/g' /etc/apache2/sites-available/default-ssl.conf
+RUN sed -i 's/<\/VirtualHost>/\t<IfModule mod_fastcgi.c>\n\t\t\tAddType application\/x-httpd-fastphp7.1 .php\n\t\t\tAction application\/x-httpd-fastphp7.1 \/php7.1-fcgi\n\t\t\tAlias \/php7.1-fcgi \/usr\/lib\/cgi-bin\/php7.1-fcgi\n\t\t<\/IfModule>\n\t<\/VirtualHost>/g' /etc/apache2/sites-available/default-ssl.conf
 RUN sed -i 's/\/var\/www\/html/\/home\/magento\/files\/html/g' /etc/apache2/sites-available/000-default.conf /etc/apache2/sites-available/default-ssl.conf
 COPY serve-web-dir.conf /tmp/
 RUN cat /tmp/serve-web-dir.conf >> /etc/apache2/apache2.conf && rm -f /tmp/serve-web-dir.conf
