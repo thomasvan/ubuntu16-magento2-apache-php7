@@ -29,17 +29,18 @@ RUN apt-get -y install php7.1-xml php7.1-mcrypt php7.1-mbstring php7.1-bcmath ph
 RUN sed -i -e"s/^bind-address\s*=\s*127.0.0.1/explicit_defaults_for_timestamp = true\nbind-address = 0.0.0.0/" /etc/mysql/mysql.conf.d/mysqld.cnf
 
 # apache config
+RUN sed -i 's/<\/VirtualHost>/\t<IfModule mod_fastcgi.c>\n\t\tAddType application\/x-httpd-fastphp7.1 .php\n\t\tAction application\/x-httpd-fastphp7.1 \/php7.1-fcgi\n\t\tAlias \/php7.1-fcgi \/usr\/lib\/cgi-bin\/php7.1-fcgi\n\t\tFastCgiExternalServer \/usr\/lib\/cgi-bin\/php7.1-fcgi -socket \/run\/php\/php7.1-fpm.sock -pass-header Authorization\n\t<\/IfModule>\n<\/VirtualHost>/g' /etc/apache2/sites-available/000-default.conf
+RUN sed -i 's/<\/VirtualHost>/\t<IfModule mod_fastcgi.c>\n\t\t\tAddType application\/x-httpd-fastphp7.1 .php\n\t\t\tAction application\/x-httpd-fastphp7.1 \/php7.1-fcgi\n\t\t\tAlias \/php7.1-fcgi \/usr\/lib\/cgi-bin\/php7.1-fcgi\n\t\t<\/IfModule>\n<\/VirtualHost>/g' /etc/apache2/sites-available/default-ssl.conf
+RUN sed -i 's/\/var\/www\/html/\/home\/magento\/files\/html/g' /etc/apache2/sites-available/000-default.conf /etc/apache2/sites-available/default-ssl.conf
 COPY serve-web-dir.conf /tmp/
-RUN cat /tmp/serve-web-dir.conf >> /etc/apache2/conf-available/serve-cgi-bin.conf && rm -f /tmp/serve-web-dir.conf
+RUN cat /tmp/serve-web-dir.conf >> /etc/apache2/apache2.conf && rm -f /tmp/serve-web-dir.conf
 
-RUN a2enmod actions fastcgi alias && \
+RUN a2enmod actions fastcgi alias setenvif && \
     a2enmod rewrite expires headers
 RUN echo "ServerName localhost" | sudo tee /etc/apache2/conf-available/fqdn.conf && \
     a2enconf fqdn && \
     a2enmod ssl && \
     a2ensite default-ssl
-RUN sed -i -e "s/#\s*Include\s*conf-available\/serve-cgi-bin.conf/Include conf-available\/serve-cgi-bin.conf/g" /etc/apache2/sites-available/000-default.conf
-RUN sed -i -e "s/#\s*Include\s*conf-available\/serve-cgi-bin.conf/Include conf-available\/serve-cgi-bin.conf/g" /etc/apache2/sites-available/default-ssl.conf
 
 # php-fpm config
 RUN phpdismod opcache
@@ -61,7 +62,6 @@ RUN sed -i -e "s/user\s*=\s*www-data/user = magento/g" /etc/php/7.1/fpm/pool.d/w
 # replace # by ; RUN find /etc/php/7.1/mods-available/tmp -name "*.ini" -exec sed -i -re 's/^(\s*)#(.*)/\1;\2/g' {} \;
 
 # apache site conf
-
 
 
 # Install composer and modman
