@@ -52,8 +52,6 @@ RUN sed -i -e "s/;\s*max_input_vars\s*=\s*1000/max_input_vars = 36000/g" /etc/ph
 RUN sed -i -e "s/;daemonize\s*=\s*yes/daemonize = no/g" /etc/php/7.1/fpm/php-fpm.conf
 RUN sed -i -e "s/;catch_workers_output\s*=\s*yes/catch_workers_output = yes/g" /etc/php/7.1/fpm/pool.d/www.conf
 RUN sed -i -e "s/user\s*=\s*www-data/user = magento/g" /etc/php/7.1/fpm/pool.d/www.conf
-COPY serve-php-fpm.conf /tmp/
-    RUN cat /tmp/serve-php-fpm.conf >> /etc/php/7.1/fpm/pool.d/www.conf && rm -f /tmp/serve-php-fpm.conf
 
 # Install composer and modman
 RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
