@@ -43,7 +43,7 @@ RUN echo "ServerName localhost" | sudo tee /etc/apache2/conf-available/fqdn.conf
 RUN phpdismod opcache
 RUN sed -i -e "s/upload_max_filesize\s*=\s*2M/upload_max_filesize = 100M/g" /etc/php/7.0/fpm/php.ini && \
     sed -i -e "s/post_max_size\s*=\s*8M/post_max_size = 100M/g" /etc/php/7.0/fpm/php.ini && \
-    sed -i -e "s/memory_limit\s*=\s*128M/memory_limit = 2048M/g" /etc/php/7.0/fpm/php.ini && \
+    sed -i -e "s/memory_limit\s*=\s*128M/memory_limit = 4096M/g" /etc/php/7.0/fpm/php.ini && \
     sed -i -e "s/max_execution_time\s*=\s*30/max_execution_time = 3600/g" /etc/php/7.0/fpm/php.ini /etc/php/7.0/cli/php.ini && \
     sed -i -e "s/;\s*max_input_vars\s*=\s*1000/max_input_vars = 36000/g" /etc/php/7.0/fpm/php.ini /etc/php/7.0/cli/php.ini
 
@@ -94,8 +94,9 @@ RUN echo "cluster.name: elastic4magento\nnode.name: node-2.x\n#node.master: true
 
 # Redis Server
 RUN apt-get -y install redis-server && \
-    sed -i -e "s/daemonize\s*yes/daemonize no/g" /etc/redis/redis.conf && \
-    sed -i -e "s/databases\s*16/databases 4/g" /etc/redis/redis.conf && \
+    sed -i "s/daemonize\s*yes/daemonize no/g" /etc/redis/redis.conf && \
+    sed -i "s/^bind.*$/bind 0.0.0.0/g" /etc/redis/redis.conf && \
+    sed -i "s/databases\s*16/databases 4/g" /etc/redis/redis.conf && \
     echo "maxmemory 1G" >> /etc/redis/redis.conf
 
 # phpMyAdmin
