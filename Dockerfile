@@ -21,7 +21,7 @@ RUN apt-get -y install python-setuptools curl git nano sudo unzip openssh-server
 RUN apt-get -y install mysql-server apache2 php7.1-fpm libapache2-mod-fastcgi
 
 # Magento Requirements
-RUN apt-get -y install php7.1-xml php7.1-mcrypt php7.1-mbstring php7.1-bcmath php7.1-gd php7.1-zip php7.1-mysql php7.1-curl php7.1-intl php7.1-soap
+RUN apt-get -y install php7.1-xml php7.1-mcrypt php7.1-mbstring php7.1-bcmath php7.1-gd php7.1-zip php7.1-mysql php7.1-curl php7.1-intl php7.1-soap php7.0-xdebug
 # MySQL config
 RUN sed -i -e"s/^bind-address\s*=\s*127.0.0.1/explicit_defaults_for_timestamp = true\nbind-address = 0.0.0.0/" /etc/mysql/mysql.conf.d/mysqld.cnf
 
@@ -40,16 +40,17 @@ RUN echo "ServerName localhost" | sudo tee /etc/apache2/conf-available/fqdn.conf
     a2ensite default-ssl
 
 # php-fpm config
-RUN phpdismod opcache
+RUN phpdismod opcache xdebug
 RUN sed -i -e "s/upload_max_filesize\s*=\s*2M/upload_max_filesize = 100M/g" /etc/php/7.0/fpm/php.ini && \
     sed -i -e "s/post_max_size\s*=\s*8M/post_max_size = 100M/g" /etc/php/7.0/fpm/php.ini && \
-    sed -i -e "s/memory_limit\s*=\s*128M/memory_limit = 4096M/g" /etc/php/7.0/fpm/php.ini && \
+    sed -i -e "s/memory_limit\s*=\s*128M/memory_limit = 2048M/g" /etc/php/7.0/fpm/php.ini && \
     sed -i -e "s/max_execution_time\s*=\s*30/max_execution_time = 3600/g" /etc/php/7.0/fpm/php.ini /etc/php/7.0/cli/php.ini && \
     sed -i -e "s/;\s*max_input_vars\s*=\s*1000/max_input_vars = 36000/g" /etc/php/7.0/fpm/php.ini /etc/php/7.0/cli/php.ini
 
 RUN sed -i -e "s/;daemonize\s*=\s*yes/daemonize = no/g" /etc/php/7.0/fpm/php-fpm.conf && \
     sed -i -e "s/;catch_workers_output\s*=\s*yes/catch_workers_output = yes/g" /etc/php/7.0/fpm/pool.d/www.conf && \
     sed -i -e "s/user\s*=\s*www-data/user = magento/g" /etc/php/7.0/fpm/pool.d/www.conf
+ADD conf/xdebug.ini /etc/php/7.0/mods-available/xdebug.ini
 
 # Install composer and modman
 RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer && \
@@ -59,7 +60,7 @@ RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local
 # Supervisor Config
 RUN /usr/bin/easy_install supervisor
 RUN /usr/bin/easy_install supervisor-stdout
-ADD ./supervisord.conf /etc/supervisord.conf
+ADD conf/supervisord.conf /etc/supervisord.conf
 
 # Add system user for Magento
 RUN useradd -m -d /home/magento -p $(openssl passwd -1 'magento') -G root -s /bin/bash magento \
@@ -74,7 +75,7 @@ RUN sudo -H -u magento bash -c 'echo -e "\n\n\n" | ssh-keygen -t rsa'
 
 # Elastic Search
 # RUN apt-get update && \
-RUN apt-get -y install default-jdk && \
+RUN apt-get -y install openjdk-8-jre && \
     useradd elasticsearch && \
     curl -L -O https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-5.6.4.tar.gz && \
     tar -zxf elasticsearch-5.6.4.tar.gz && \
@@ -102,11 +103,11 @@ RUN apt-get -y install redis-server && \
 # phpMyAdmin
 RUN curl --location https://www.phpmyadmin.net/downloads/phpMyAdmin-latest-all-languages.tar.gz | tar xzf - && \
     mv phpMyAdmin* /usr/share/phpmyadmin
-ADD ./config.inc.php /usr/share/phpmyadmin/config.inc.php
+ADD conf/config.inc.php /usr/share/phpmyadmin/config.inc.php
 RUN chown -R magento: /usr/share/phpmyadmin
 
 # Magento cron and startup Script
-COPY magento.cron /tmp/
+COPY conf/magento.cron /tmp/
 ADD ./start.sh /start.sh
 
 RUN crontab -u magento /tmp/magento.cron && \
@@ -118,6 +119,7 @@ RUN crontab -u magento /tmp/magento.cron && \
 EXPOSE 9202
 EXPOSE 9200
 EXPOSE 9011
+EXPOSE 9000
 EXPOSE 6379
 EXPOSE 4200
 EXPOSE 3306
